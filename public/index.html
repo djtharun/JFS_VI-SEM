@@ -76,7 +76,7 @@
 
    
     <!-- Dropdown -->
-    <select id="nameSelect" onchange="showDetails()" style='height:40px; width:320px;'>
+    <select id="nameSelect" onchange="displayNone()" style='height:40px; width:320px;'>
         <option value="">-- Select Name --</option>
 
         <!-- Earlier personalities -->
@@ -100,6 +100,10 @@
         <option value="AdaLovelace">Ada Lovelace (1st Programmer)</option>
         <option value="madhu">Madhu (JFS Trainer, CDC, IARE Hyderabad)</option>
     </select>
+
+    <button onclick="confirmation()">
+        show Details
+    </button>
 
     <div class="container">
 
@@ -138,7 +142,7 @@ function showDetails() {
         "stroustrup": "images/stroustrup.jpg",
         "juergen": "images/juergen.jpg",
         "krishna": "images/krishna.jpg",
-
+        "tharun": "images/tharun.jpg",
         "bill_gates": "images/bill_gates.jpg",
         "steve_jobs": "images/steve_jobs.jpg",
         "elon_musk": "images/elon_musk.jpg",
@@ -167,6 +171,7 @@ function showDetails() {
         "linus_torvalds": "Linus Torvalds created Linux.",
         "tim_berner": "Tim Berners-Lee invented the World Wide Web.",
         "Sundar_Pichai": "Sundar Pichai is the CEO of Google.",
+        "tharun":"Tharun is the student of IARE",
         "satyanadella": "Satya Nadella is the CEO of Microsoft.",
         "AdaLovelace": "Ada Lovelace was the first computer programmer."
     };
@@ -203,7 +208,7 @@ function showDetails() {
                 "stroustrup": "images/stroustrup.jpg",
                 "juergen": "images/juergen.jpg",
                 "krishna": "images/krishna.jpg",
-
+                "tharun": "images/tharun.jpg",
                 "bill_gates": "images/bill_gates.jpg",
                 "steve_jobs": "images/steve_jobs.jpg",
                 "elon_musk": "images/elon_musk.jpg",
@@ -233,7 +238,7 @@ function showDetails() {
                 "tim_berner": "Tim Berners-Lee invented the World Wide Web.",
                 "Sundar_Pichai": "Sundar Pichai is the CEO of Google.",
                 "satyanadella": "Satya Nadella is the CEO of Microsoft.",
-               
+               "tharun":"Tharun is the student of IARE",
                 "AdaLovelace": "Ada Lovelace was the first computer programmer."
             };
 
@@ -244,6 +249,23 @@ function showDetails() {
                 photo.src = photos[name];
                 photo.style.display = "block";
                 info.innerHTML = details[name];
+            }
+        }
+
+        function displayNone() {
+            let photo = document.getElementById('photo');
+            let info = document.getElementById('infoText');
+            photo.style.display = "none";
+            info.innerHTML = "Please select a person from dropdown.";
+        }
+
+        function confirmation() {
+            let confirmAction = confirm("Are you sure?");
+            if (confirmAction) {
+                showDetails()
+            }
+            else {
+                displayNone()
             }
         }
     </script>
