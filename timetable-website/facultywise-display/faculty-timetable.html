@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Faculty-wise Timetable</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; }
+
+        table {
+            width: 80%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        th { background: lightblue; }
+
+        .batch-title {
+            font-weight: bold;
+            font-size: 20px;
+            margin-top: 30px;
+        }
+
+        input, select, button {
+            margin: 5px;
+            padding: 6px;
+            width: 260px;
+        }
+
+        .current-cell {
+            background-color: #ffe08a;
+            font-weight: bold;
+        }
+
+        .batch-highlight {
+            background-color: #c7f9cc;
+            font-weight: bold;
+        }
+
+        hr { border: 0; border-top: 1px solid #999; }
+    </style>
+</head>
+
+<body>
+
+<h2>Upload CSV File</h2>
+<input type="file" id="csvFile" accept=".csv">
+
+<hr>
+
+<h3>Select Faculty</h3>
+<input list="facultyList" id="facultyInput" placeholder="Type faculty name or ALL">
+<datalist id="facultyList"></datalist>
+<button onclick="submitSelection()">Submit</button>
+
+<hr>
+
+<h3>Highlight Options</h3>
+<select id="highlightMode">
+    <option value="current">Current Day + Session</option>
+    <option value="batch">Specific Batch(es)</option>
+</select>
+
+<br>
+
+<input list="batchList" id="batchInput"
+       placeholder="Type batch (CSE-A or CSE-A,CSE-B)">
+<datalist id="batchList"></datalist>
+
+<div id="tables"></div>
+
+<script>
+let csvData = [];
+let facultySet = new Set();
+let batchSet = new Set();
+
+/* ---------- CSV UPLOAD ---------- */
+document.getElementById("csvFile").addEventListener("change", function () {
+    Papa.parse(this.files[0], {
+        header: true,
+        skipEmptyLines: true,
+        complete: function (result) {
+            csvData = result.data;
+            populateFacultyDatalist();
+            populateBatchDatalist();
+            document.getElementById("tables").innerHTML = "";
+        }
+    });
+});
+
+/* ---------- FACULTY DATALIST ---------- */
+function populateFacultyDatalist() {
+    const datalist = document.getElementById("facultyList");
+    datalist.innerHTML = "";
+    facultySet.clear();
+
+    datalist.appendChild(new Option("ALL", "ALL"));
+
+    csvData.forEach(row => {
+        if (row["FACULTY"]) facultySet.add(row["FACULTY"]);
+    });
+
+    facultySet.forEach(f => datalist.appendChild(new Option(f, f)));
+}
+
+/* ---------- BATCH DATALIST ---------- */
+function populateBatchDatalist() {
+    const datalist = document.getElementById("batchList");
+    datalist.innerHTML = "";
+    batchSet.clear();
+
+    csvData.forEach(row => {
+        if (row["BATCH"]) batchSet.add(row["BATCH"]);
+    });
+
+    batchSet.forEach(b => datalist.appendChild(new Option(b, b)));
+}
+
+/* ---------- SUBMIT ---------- */
+function submitSelection() {
+    const facultyValue = document.getElementById("facultyInput").value.trim();
+    const container = document.getElementById("tables");
+    container.innerHTML = "";
+
+    if (facultyValue === "ALL") {
+        facultySet.forEach(f =>
+            renderFacultyTable(f, buildFacultyTimetable(f))
+        );
+        return;
+    }
+
+    if (!facultySet.has(facultyValue)) {
+        alert("Select valid faculty or ALL");
+        return;
+    }
+
+    renderFacultyTable(facultyValue, buildFacultyTimetable(facultyValue));
+}
+
+/* ---------- BUILD TIMETABLE ---------- */
+function buildFacultyTimetable(faculty) {
+    const timetable = {};
+
+    csvData.forEach(row => {
+        if (row["FACULTY"] !== faculty) return;
+
+        const { DAY: day, SESSION: session, COURSE: course, ROOM: room, BATCH: batch } = row;
+
+        if (!timetable[day]) timetable[day] = { FN: "", AN: "" };
+
+        const entry = `${course}<br>Batch: ${batch}<br>Room: ${room}`;
+
+        timetable[day][session]
+            ? timetable[day][session] += "<hr>" + entry
+            : timetable[day][session] = entry;
+    });
+
+    return timetable;
+}
+
+/* ---------- CURRENT DAY & SESSION ---------- */
+function getCurrentDay() {
+    return ["SUN","MON","TUE","WED","THU","FRI","SAT"][new Date().getDay()];
+}
+
+function getCurrentSession() {
+    return new Date().getHours() < 13 ? "FN" : "AN";
+}
+
+/* ---------- RENDER TABLE ---------- */
+function renderFacultyTable(faculty, timetable) {
+    const container = document.getElementById("tables");
+    const days = ["MON","TUE","WED","THU","FRI","SAT"];
+
+    const highlightMode = document.getElementById("highlightMode").value;
+    const batchValues = document.getElementById("batchInput").value
+        .split(",").map(b => b.trim()).filter(Boolean);
+
+    const today = getCurrentDay();
+    const currentSession = getCurrentSession();
+
+    const title = document.createElement("div");
+    title.className = "batch-title";
+    title.innerHTML = `Faculty: ${faculty}`;
+
+    const table = document.createElement("table");
+
+    let html = `
+        <tr>
+            <th>DAY</th>
+            <th>FN</th>
+            <th rowspan="7">L<br>U<br>N<br>C<br>H</th>
+            <th>AN</th>
+        </tr>
+    `;
+
+    days.forEach(day => {
+        const fn = timetable[day]?.FN || "";
+        const an = timetable[day]?.AN || "";
+
+        let fnClass = "", anClass = "";
+
+        if (highlightMode === "current") {
+            if (day === today && currentSession === "FN") fnClass = "current-cell";
+            if (day === today && currentSession === "AN") anClass = "current-cell";
+        }
+
+        if (highlightMode === "batch" && batchValues.length) {
+            batchValues.forEach(batch => {
+                if (fn.includes(`Batch: ${batch}`)) fnClass = "batch-highlight";
+                if (an.includes(`Batch: ${batch}`)) anClass = "batch-highlight";
+            });
+        }
+
+        html += `
+            <tr>
+                <td>${day}</td>
+                <td class="${fnClass}">${fn}</td>
+                <td class="${anClass}">${an}</td>
+            </tr>
+        `;
+    });
+
+    table.innerHTML = html;
+    container.appendChild(title);
+    container.appendChild(table);
+}
+</script>
+
+</body>
+</html>
