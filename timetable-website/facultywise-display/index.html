@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Faculty-wise Timetable</title>
+
+    <!-- PapaParse -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 80%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+            vertical-align: top;
+        }
+        th {
+            background: lightblue;
+        }
+        .batch-title {
+            font-weight: bold;
+            font-size: 20px;
+            margin-top: 30px;
+        }
+        input, select, button {
+            margin: 5px;
+            padding: 6px;
+        }
+        hr {
+            border: 0;
+            border-top: 1px solid #999;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Upload CSV File</h2>
+<input type="file" id="csvFile" accept=".csv">
+
+<hr>
+
+<h3>Select Faculty</h3>
+<input type="text" id="facultySearch" placeholder="Search faculty..." onkeyup="filterFaculty()">
+
+<select id="facultyDropdown">
+    <option value="">-- Select Faculty --</option>
+</select>
+
+<button onclick="showFacultyTimetable()">Submit</button>
+
+<div id="tables"></div>
+
+<script>
+let csvData = [];
+let facultyList = [];
+
+/* ---------------- CSV UPLOAD ---------------- */
+document.getElementById("csvFile").addEventListener("change", function () {
+    Papa.parse(this.files[0], {
+        header: true,
+        skipEmptyLines: true,
+        complete: function (result) {
+            csvData = result.data;
+            populateFacultyDropdown(csvData);
+            document.getElementById("tables").innerHTML = "";
+        }
+    });
+});
+
+/* ---------------- POPULATE DROPDOWN ---------------- */
+function populateFacultyDropdown(data) {
+    const dropdown = document.getElementById("facultyDropdown");
+    dropdown.innerHTML = `<option value="">-- Select Faculty --</option>`;
+
+    facultyList = [...new Set(
+        data.map(row => row["FACULTY"]).filter(Boolean)
+    )];
+
+    facultyList.forEach(faculty => {
+        const option = document.createElement("option");
+        option.value = faculty;
+        option.textContent = faculty;
+        dropdown.appendChild(option);
+    });
+}
+
+/* ---------------- SEARCH FILTER ---------------- */
+function filterFaculty() {
+    const searchValue = document.getElementById("facultySearch").value.toLowerCase();
+    const dropdown = document.getElementById("facultyDropdown");
+
+    dropdown.innerHTML = `<option value="">-- Select Faculty --</option>`;
+
+    facultyList
+        .filter(faculty => faculty.toLowerCase().includes(searchValue))
+        .forEach(faculty => {
+            const option = document.createElement("option");
+            option.value = faculty;
+            option.textContent = faculty;
+            dropdown.appendChild(option);
+        });
+}
+
+/* ---------------- SUBMIT BUTTON ---------------- */
+function showFacultyTimetable() {
+    const selectedFaculty = document.getElementById("facultyDropdown").value;
+
+    if (!selectedFaculty) {
+        alert("Please select a faculty");
+        return;
+    }
+
+    const timetable = {};
+
+    csvData.forEach(row => {
+        if (row["FACULTY"] !== selectedFaculty) return;
+
+        const day = row["DAY"];
+        const session = row["SESSION"]; // FN / AN
+        const course = row["COURSE"];
+        const room = row["ROOM"];
+        const batch = row["BATCH"];
+
+        if (!timetable[day]) {
+            timetable[day] = { FN: "", AN: "" };
+        }
+
+        const entry = `
+            ${course}<br>
+            Batch: ${batch}<br>
+            Room: ${room}
+        `;
+
+        if (timetable[day][session]) {
+            timetable[day][session] += "<hr>" + entry;
+        } else {
+            timetable[day][session] = entry;
+        }
+    });
+
+    renderFacultyTable(selectedFaculty, timetable);
+}
+
+/* ---------------- RENDER TABLE ---------------- */
+function renderFacultyTable(faculty, timetable) {
+    const container = document.getElementById("tables");
+    container.innerHTML = "";
+
+    const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+    const title = document.createElement("div");
+    title.className = "batch-title";
+    title.innerHTML = `Faculty: ${faculty}`;
+
+    const table = document.createElement("table");
+    table.id = `table_${faculty.replace(/\s+/g, "_")}`;
+
+    let html = `
+        <tr>
+            <th>DAY</th>
+            <th>FN</th>
+            <th rowspan="7">L<br>U<br>N<br>C<br>H</th>
+            <th>AN</th>
+        </tr>
+    `;
+
+    days.forEach(day => {
+        html += `
+            <tr>
+                <td>${day}</td>
+                <td>${timetable[day]?.FN || ""}</td>
+                <td>${timetable[day]?.AN || ""}</td>
+            </tr>
+        `;
+    });
+
+    table.innerHTML = html;
+
+    container.appendChild(title);
+    container.appendChild(table);
+}
+</script>
+
+</body>
+</html>
